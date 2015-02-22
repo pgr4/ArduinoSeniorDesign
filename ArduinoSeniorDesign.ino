@@ -15,10 +15,23 @@
 Adafruit_CC3000 cc3000 = Adafruit_CC3000(ADAFRUIT_CC3000_CS, ADAFRUIT_CC3000_IRQ, ADAFRUIT_CC3000_VBAT,
                                          SPI_CLOCK_DIVIDER); // you can change this clock speed but DI
 
-#define WLAN_SSID       "ASUSPAT"        // cannot be longer than 32 characters!
-#define WLAN_PASS       "strongshrub"
+#define HOME
+
+#ifdef HOME
+
+  #define WLAN_SSID       "ASUSPAT"        // cannot be longer than 32 characters!
+  #define WLAN_PASS       "strongshrub"
 // Security can be WLAN_SEC_UNSEC, WLAN_SEC_WEP, WLAN_SEC_WPA or WLAN_SEC_WPA2
-#define WLAN_SECURITY   WLAN_SEC_WPA2
+  #define WLAN_SECURITY   WLAN_SEC_WPA2
+#endif
+
+#ifdef SCHOOL
+
+  #define WLAN_SSID       "UAGuest"        // cannot be longer than 32 characters!
+  #define WLAN_PASS       ""
+// Security can be WLAN_SEC_UNSEC, WLAN_SEC_WEP, WLAN_SEC_WPA or WLAN_SEC_WPA2
+  #define WLAN_SECURITY   WLAN_SEC_UNSEC
+#endif
 
 Adafruit_CC3000_Client client;
 
