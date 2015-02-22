@@ -72,13 +72,13 @@ void goToTrack(Parser::TrackMessage m){
   sendBusyReadyMessage(4);  
 }
 
-void lift(){
+void pause(){
   sendBusyReadyMessage(3);
   
   sendBusyReadyMessage(4);  
 }
 
-void pause(){
+void stopPause(){
   sendBusyReadyMessage(3);
   
   sendBusyReadyMessage(4);  
@@ -96,11 +96,11 @@ void doCommand(char* m, int command){
       break;
     //Lift
     case 12:
-      lift();
+      pause();
       break;
     //Pause
     case 13:
-      pause();
+      stopLift();
       break;
     case 14:
       sendBusyReadyMessage(21);
