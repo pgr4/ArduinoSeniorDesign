@@ -61,39 +61,49 @@ void loop(void) {
 }
 
 void play(){
-
+  sendBusyReadyMessage(3);
+ 
+  sendBusyReadyMessage(4);  
 }
 
 void goToTrack(Parser::TrackMessage m){
-
+  sendBusyReadyMessage(3);
+ 
+  sendBusyReadyMessage(4);  
 }
 
 void lift(){
-
+  sendBusyReadyMessage(3);
+  
+  sendBusyReadyMessage(4);  
 }
 
 void pause(){
-
+  sendBusyReadyMessage(3);
+  
+  sendBusyReadyMessage(4);  
 }
 
 void doCommand(char* m, int command){
  switch(command){
    //Go to Track
-    case 0:
+    case 10:
       goToTrack(p.ParseTrackMessage(m));
       break;
     //Play
-    case 1:
+    case 11:
       play();
       break;
     //Lift
-    case 2:
+    case 12:
       lift();
       break;
     //Pause
-    case 3:
+    case 13:
       pause();
       break;
+    case 14:
+      sendBusyReadyMessage(21);
     default:
       break;
   }
@@ -125,6 +135,47 @@ void readUDP(){
    }
 }
 
+//When the microcontroller performs a task it needs to let the applications know we are busy
+//After the task is completed we let the apps know we are listening and ready
+//Busy  = 20
+//Ready = 21
+
+//TODO: If we are busy I additionally want to pass a string notifying the event taking place.
+void sendBusyReadyMessage(int ctrl){
+  uint8_t buf[26];
+
+  byte sIP[4] = {myIP >> 24, myIP >> 16, myIP >> 8, myIP};
+  byte dIP[4] = {192, 168, 1, 255};
+  byte cutoff[6] = {111, 111, 111, 111, 111, 111};
+  
+  int pointer = 0;
+  
+  do {
+      client = cc3000.connectUDP(3232236031, 30003);
+    } while(!client.connected());
+
+    if(client.connected()) {
+      
+      memset(buf, 0, sizeof(buf));
+      
+      memcpy_P(buf, sIP, sizeof(sIP));
+      pointer += sizeof(sIP);
+      
+      memcpy_P(&buf[pointer], dIP, sizeof(dIP));
+      pointer += sizeof(dIP);
+      
+      buf[pointer] = ctrl;
+      pointer += 1;
+      
+      memcpy_P(&buf[pointer], cutoff, sizeof(cutoff));
+      pointer += sizeof(cutoff);
+      
+      client.write(buf, sizeof(buf));
+  }
+   client.close();
+  
+}
+
 void writeNewRecord() {
   //Size depends on id
   uint8_t buf[26];
@@ -135,6 +186,7 @@ void writeNewRecord() {
   byte id[10] = {10, 20, 30, 40, 50, 60, 70, 80, 90, 100};
   
   int pointer = 0;
+  
   do {
       client = cc3000.connectUDP(3232236031, 30003);
     } while(!client.connected());
@@ -155,7 +207,7 @@ void writeNewRecord() {
       memcpy_P(&buf[pointer], cutoff, sizeof(cutoff));
       pointer += sizeof(cutoff);
       
-       memcpy_P(&buf[pointer], id, sizeof(id));
+      memcpy_P(&buf[pointer], id, sizeof(id));
       pointer += sizeof(id);
       
       buf[pointer] = 10;
