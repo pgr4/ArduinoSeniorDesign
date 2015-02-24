@@ -38,54 +38,63 @@ Adafruit_CC3000_Client client;
 const unsigned long
   connectTimeout  = 15L * 1000L, // Max time to wait for server connection
   responseTimeout = 15L * 1000L; // Max time to wait for data from server
- 
+
 uint32_t myIP;
 
 #define UDP_READ_BUFFER_SIZE 20
 #define LISTEN_PORT_UDP 30003
+
 UDPServer udpServer = UDPServer(LISTEN_PORT_UDP);
 
 Parser p = Parser();
+const int totPixels = 1536;
+int IntArray[totPixels];
 
-void setup(void)
-{
+void setup(void){
   doSetup();
+  
+  Serial.println("Done with Setup");
   
   udpServer.begin();
 }
 
 
 void loop(void) {
-  readUDP();
+  sendBusyMessage(3,4);
+  //readUDP();
   //writeNewRecord();
 }
 
 void play(){
-  sendBusyReadyMessage(3);
+  sendBusyMessage(3,0);
  
-  sendBusyReadyMessage(4);  
+  sendReadyMessage(4);  
 }
 
 void goToTrack(Parser::TrackMessage m){
-  sendBusyReadyMessage(3);
+  sendBusyMessage(3,1);
  
-  sendBusyReadyMessage(4);  
+  sendReadyMessage(4);  
 }
 
 void pause(){
-  sendBusyReadyMessage(3);
+  sendBusyMessage(3,2);
   
-  sendBusyReadyMessage(4);  
+  sendReadyMessage(4);  
 }
 
-void stopPause(){
-  sendBusyReadyMessage(3);
+void stopLift(){
+  sendBusyMessage(3,3);
   
-  sendBusyReadyMessage(4);  
+  sendReadyMessage(4);  
 }
 
 void doCommand(char* m, int command){
  switch(command){
+   //Status
+    case 3:
+      sendReadyMessage(21);
+      break;
    //Go to Track
     case 10:
       goToTrack(p.ParseTrackMessage(m));
@@ -102,8 +111,6 @@ void doCommand(char* m, int command){
     case 13:
       stopLift();
       break;
-    case 14:
-      sendBusyReadyMessage(21);
     default:
       break;
   }
@@ -137,11 +144,9 @@ void readUDP(){
 
 //When the microcontroller performs a task it needs to let the applications know we are busy
 //After the task is completed we let the apps know we are listening and ready
-//Busy  = 20
-//Ready = 21
-
-//TODO: If we are busy I additionally want to pass a string notifying the event taking place.
-void sendBusyReadyMessage(int ctrl){
+//Busy  = 3
+//Ready = 4
+void sendReadyMessage(int ctrl){
   uint8_t buf[26];
 
   byte sIP[4] = {myIP >> 24, myIP >> 16, myIP >> 8, myIP};
@@ -173,10 +178,47 @@ void sendBusyReadyMessage(int ctrl){
       client.write(buf, sizeof(buf));
   }
    client.close();
-  
 }
 
-void writeNewRecord() {
+void sendBusyMessage(int ctrl, int extra){
+  uint8_t buf[26];
+
+  byte sIP[4] = {myIP >> 24, myIP >> 16, myIP >> 8, myIP};
+  byte dIP[4] = {192, 168, 1, 255};
+  byte cutoff[6] = {111, 111, 111, 111, 111, 111};
+  
+  int pointer = 0;
+  
+  do {
+      client = cc3000.connectUDP(3232236031, 30003);
+    } while(!client.connected());
+
+    if(client.connected()) {
+      
+      memset(buf, 0, sizeof(buf));
+      
+      memcpy_P(buf, sIP, sizeof(sIP));
+      pointer += sizeof(sIP);
+      
+      memcpy_P(&buf[pointer], dIP, sizeof(dIP));
+      pointer += sizeof(dIP);
+      
+      buf[pointer] = ctrl;
+      pointer += 1;
+      
+      memcpy_P(&buf[pointer], cutoff, sizeof(cutoff));
+      pointer += sizeof(cutoff);
+      
+      if(ctrl == 1){
+        buf[pointer] = extra;
+      }
+      
+      client.write(buf, sizeof(buf));
+  }
+   client.close();
+}
+
+void writeNewRecord() {  
   //Size depends on id
   uint8_t buf[26];
   
