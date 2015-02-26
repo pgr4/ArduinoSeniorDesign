@@ -15,10 +15,18 @@
 Adafruit_CC3000 cc3000 = Adafruit_CC3000(ADAFRUIT_CC3000_CS, ADAFRUIT_CC3000_IRQ, ADAFRUIT_CC3000_VBAT,
                                          SPI_CLOCK_DIVIDER); // you can change this clock speed but DI
 
-#define HOME
+uint sendAddress;
+
+#define NETGEAR
+
+#ifdef NETGEAR
+  #define WLAN_SSID       "NETGEAR84"        // cannot be longer than 32 characters!
+  #define WLAN_PASS       "strongshrub599"
+// Security can be WLAN_SEC_UNSEC, WLAN_SEC_WEP, WLAN_SEC_WPA or WLAN_SEC_WPA2
+  #define WLAN_SECURITY   WLAN_SEC_WPA2
+#endif
 
 #ifdef HOME
-
   #define WLAN_SSID       "ASUSPAT"        // cannot be longer than 32 characters!
   #define WLAN_PASS       "strongshrub"
 // Security can be WLAN_SEC_UNSEC, WLAN_SEC_WEP, WLAN_SEC_WPA or WLAN_SEC_WPA2
@@ -26,7 +34,6 @@ Adafruit_CC3000 cc3000 = Adafruit_CC3000(ADAFRUIT_CC3000_CS, ADAFRUIT_CC3000_IRQ
 #endif
 
 #ifdef SCHOOL
-
   #define WLAN_SSID       "UAGuest"        // cannot be longer than 32 characters!
   #define WLAN_PASS       ""
 // Security can be WLAN_SEC_UNSEC, WLAN_SEC_WEP, WLAN_SEC_WPA or WLAN_SEC_WPA2
@@ -50,7 +57,17 @@ Parser p = Parser();
 const int totPixels = 1536;
 int IntArray[totPixels];
 
+int d50 = 50;
+int d51 = 51;
+int d52 = 52;
+
 void setup(void){
+  
+  pinMode(50,OUTPUT);
+  pinMode(51,OUTPUT);
+  digitalWrite(50, LOW); 
+  digitalWrite(51, LOW); 
+  
   doSetup();
   
   Serial.println("Done with Setup");
@@ -60,9 +77,10 @@ void setup(void){
 
 
 void loop(void) {
-  sendBusyMessage(3,4);
-  //readUDP();
+  //sendBusyMessage(3,4);
+  readUDP();
   //writeNewRecord();
+  delay(10000);
 }
 
 void play(){
@@ -93,10 +111,16 @@ void doCommand(char* m, int command){
  switch(command){
    //Status
     case 3:
+      digitalWrite(50, HIGH); 
+      delay(5000);
+      digitalWrite(50, LOW); 
       sendReadyMessage(21);
       break;
    //Go to Track
     case 10:
+      digitalWrite(51, HIGH); 
+      delay(5000);
+      digitalWrite(51, LOW); 
       goToTrack(p.ParseTrackMessage(m));
       break;
     //Play
@@ -194,7 +218,7 @@ void sendBusyMessage(int ctrl, int extra){
     } while(!client.connected());
 
     if(client.connected()) {
-      
+      Serial.println("Sent");
       memset(buf, 0, sizeof(buf));
       
       memcpy_P(buf, sIP, sizeof(sIP));
@@ -209,9 +233,7 @@ void sendBusyMessage(int ctrl, int extra){
       memcpy_P(&buf[pointer], cutoff, sizeof(cutoff));
       pointer += sizeof(cutoff);
       
-      if(ctrl == 1){
-        buf[pointer] = extra;
-      }
+      buf[pointer] = extra;
       
       client.write(buf, sizeof(buf));
   }
