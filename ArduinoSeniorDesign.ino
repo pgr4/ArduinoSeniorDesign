@@ -77,10 +77,7 @@ void setup(void){
 
 
 void loop(void) {
-  //sendBusyMessage(3,4);
   readUDP();
-  //writeNewRecord();
-  delay(10000);
 }
 
 void play(){
@@ -112,14 +109,14 @@ void doCommand(char* m, int command){
    //Status
     case 3:
       digitalWrite(50, HIGH); 
-      delay(5000);
+      //delay(5000);
       digitalWrite(50, LOW); 
-      sendReadyMessage(21);
+      sendReadyMessage(4);
       break;
    //Go to Track
     case 10:
       digitalWrite(51, HIGH); 
-      delay(5000);
+      //delay(5000);
       digitalWrite(51, LOW); 
       goToTrack(p.ParseTrackMessage(m));
       break;
@@ -154,15 +151,13 @@ void readUDP(){
       
       Parser::Header header = p.ParseHeader(buffer);
       
-      Serial.println(header.command);
-      
       doCommand(buffer, header.command);
      
-      delay(20000);
+      delay(1000);
    }
    else{
-     Serial.println("No Data Homes");
-     delay(10000);
+     //Serial.println("No Data Homes");
+     //delay(10000);
    }
 }
 
@@ -171,7 +166,7 @@ void readUDP(){
 //Busy  = 3
 //Ready = 4
 void sendReadyMessage(int ctrl){
-  uint8_t buf[26];
+  uint8_t buf[15];
 
   byte sIP[4] = {myIP >> 24, myIP >> 16, myIP >> 8, myIP};
   byte dIP[4] = {192, 168, 1, 255};
@@ -205,7 +200,7 @@ void sendReadyMessage(int ctrl){
 }
 
 void sendBusyMessage(int ctrl, int extra){
-  uint8_t buf[26];
+  uint8_t buf[16];
 
   byte sIP[4] = {myIP >> 24, myIP >> 16, myIP >> 8, myIP};
   byte dIP[4] = {192, 168, 1, 255};
