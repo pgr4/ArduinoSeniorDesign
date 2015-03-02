@@ -17,7 +17,7 @@ Adafruit_CC3000 cc3000 = Adafruit_CC3000(ADAFRUIT_CC3000_CS, ADAFRUIT_CC3000_IRQ
 
 uint sendAddress;
 
-#define NETGEAR
+#define HOME
 
 #ifdef NETGEAR
   #define WLAN_SSID       "NETGEAR84"        // cannot be longer than 32 characters!
@@ -71,7 +71,7 @@ void setup(void){
   doSetup();
   
   Serial.println("Done with Setup");
-  
+    
   udpServer.begin();
 }
 
@@ -83,40 +83,41 @@ void loop(void) {
 void play(){
   sendBusyMessage(3,0);
  
-  sendReadyMessage(4);  
+  sendReadyMessage(21); 
 }
 
 void goToTrack(Parser::TrackMessage m){
   sendBusyMessage(3,1);
  
-  sendReadyMessage(4);  
+  sendReadyMessage(21);  
 }
 
 void pause(){
   sendBusyMessage(3,2);
   
-  sendReadyMessage(4);  
+  sendReadyMessage(21);
 }
 
 void stopLift(){
   sendBusyMessage(3,3);
   
-  sendReadyMessage(4);  
+  sendReadyMessage(21);
 }
 
 void doCommand(char* m, int command){
  switch(command){
    //Status
     case 3:
-      digitalWrite(50, HIGH); 
-      //delay(5000);
-      digitalWrite(50, LOW); 
-      sendReadyMessage(4);
+      //Serial.println("Status Message");
+      //digitalWrite(50, HIGH); 
+      delay(10000);
+      //digitalWrite(50, LOW); 
+      sendReadyMessage(21);
       break;
    //Go to Track
     case 10:
       digitalWrite(51, HIGH); 
-      //delay(5000);
+      delay(2000);
       digitalWrite(51, LOW); 
       goToTrack(p.ParseTrackMessage(m));
       break;
@@ -150,14 +151,15 @@ void readUDP(){
       }
       
       Parser::Header header = p.ParseHeader(buffer);
-      
+      Serial.print("Command = ");Serial.println(header.command);
+      Serial.println("Command Start");
       doCommand(buffer, header.command);
-     
-      delay(1000);
+      Serial.println("Command Done");
+      
+      p.resetPointer();
    }
    else{
      //Serial.println("No Data Homes");
-     //delay(10000);
    }
 }
 
@@ -175,6 +177,7 @@ void sendReadyMessage(int ctrl){
   int pointer = 0;
   
   do {
+      Serial.println("Connecting");
       client = cc3000.connectUDP(3232236031, 30003);
     } while(!client.connected());
 
@@ -195,6 +198,7 @@ void sendReadyMessage(int ctrl){
       pointer += sizeof(cutoff);
       
       client.write(buf, sizeof(buf));
+      Serial.println("Sent");
   }
    client.close();
 }
