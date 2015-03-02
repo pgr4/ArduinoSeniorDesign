@@ -17,7 +17,7 @@ Adafruit_CC3000 cc3000 = Adafruit_CC3000(ADAFRUIT_CC3000_CS, ADAFRUIT_CC3000_IRQ
 
 uint sendAddress;
 
-#define HOME
+#define NETGEAR
 
 #ifdef NETGEAR
   #define WLAN_SSID       "NETGEAR84"        // cannot be longer than 32 characters!
@@ -81,44 +81,39 @@ void loop(void) {
 }
 
 void play(){
-  sendBusyMessage(3,0);
- 
-  sendReadyMessage(21); 
 }
 
-void goToTrack(Parser::TrackMessage m){
-  sendBusyMessage(3,1);
- 
-  sendReadyMessage(21);  
+void goToTrack(Parser::TrackMessage m){ 
 }
 
 void pause(){
-  sendBusyMessage(3,2);
-  
-  sendReadyMessage(21);
 }
 
 void stopLift(){
-  sendBusyMessage(3,3);
-  
-  sendReadyMessage(21);
 }
 
 void doCommand(char* m, int command){
  switch(command){
    //Status
     case 3:
-      //Serial.println("Status Message");
-      //digitalWrite(50, HIGH); 
-      delay(10000);
-      //digitalWrite(50, LOW); 
-      sendReadyMessage(21);
+      digitalWrite(50, HIGH);
+      delay(2500);
+      sendStatusMessage(21);
+      digitalWrite(50, LOW); 
+      break;
+    //Scan  
+    case 4:
+      digitalWrite(51, HIGH);
+      delay(2500);
+      sendStatusMessage(26);
+      delay(2500);
+      writeNewRecord();
+      delay(2500);
+      sendStatusMessage(21);
+      digitalWrite(51, LOW); 
       break;
    //Go to Track
-    case 10:
-      digitalWrite(51, HIGH); 
-      delay(2000);
-      digitalWrite(51, LOW); 
+    case 10: 
       goToTrack(p.ParseTrackMessage(m));
       break;
     //Play
@@ -165,9 +160,7 @@ void readUDP(){
 
 //When the microcontroller performs a task it needs to let the applications know we are busy
 //After the task is completed we let the apps know we are listening and ready
-//Busy  = 3
-//Ready = 4
-void sendReadyMessage(int ctrl){
+void sendStatusMessage(int ctrl){
   uint8_t buf[15];
 
   byte sIP[4] = {myIP >> 24, myIP >> 16, myIP >> 8, myIP};
@@ -177,7 +170,6 @@ void sendReadyMessage(int ctrl){
   int pointer = 0;
   
   do {
-      Serial.println("Connecting");
       client = cc3000.connectUDP(3232236031, 30003);
     } while(!client.connected());
 
@@ -196,43 +188,6 @@ void sendReadyMessage(int ctrl){
       
       memcpy_P(&buf[pointer], cutoff, sizeof(cutoff));
       pointer += sizeof(cutoff);
-      
-      client.write(buf, sizeof(buf));
-      Serial.println("Sent");
-  }
-   client.close();
-}
-
-void sendBusyMessage(int ctrl, int extra){
-  uint8_t buf[16];
-
-  byte sIP[4] = {myIP >> 24, myIP >> 16, myIP >> 8, myIP};
-  byte dIP[4] = {192, 168, 1, 255};
-  byte cutoff[6] = {111, 111, 111, 111, 111, 111};
-  
-  int pointer = 0;
-  
-  do {
-      client = cc3000.connectUDP(3232236031, 30003);
-    } while(!client.connected());
-
-    if(client.connected()) {
-      Serial.println("Sent");
-      memset(buf, 0, sizeof(buf));
-      
-      memcpy_P(buf, sIP, sizeof(sIP));
-      pointer += sizeof(sIP);
-      
-      memcpy_P(&buf[pointer], dIP, sizeof(dIP));
-      pointer += sizeof(dIP);
-      
-      buf[pointer] = ctrl;
-      pointer += 1;
-      
-      memcpy_P(&buf[pointer], cutoff, sizeof(cutoff));
-      pointer += sizeof(cutoff);
-      
-      buf[pointer] = extra;
       
       client.write(buf, sizeof(buf));
   }
@@ -241,7 +196,7 @@ void sendBusyMessage(int ctrl, int extra){
 
 void writeNewRecord() {  
   //Size depends on id
-  uint8_t buf[26];
+  uint8_t buf[25];
   
   byte sIP[4] = {myIP >> 24, myIP >> 16, myIP >> 8, myIP};
   byte dIP[4] = {192, 168, 1, 255};
@@ -272,9 +227,7 @@ void writeNewRecord() {
       
       memcpy_P(&buf[pointer], id, sizeof(id));
       pointer += sizeof(id);
-      
-      buf[pointer] = 10;
-      
+           
       client.write(buf, sizeof(buf));
   }
    client.close();
