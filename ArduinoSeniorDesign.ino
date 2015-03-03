@@ -17,7 +17,7 @@ Adafruit_CC3000 cc3000 = Adafruit_CC3000(ADAFRUIT_CC3000_CS, ADAFRUIT_CC3000_IRQ
 
 uint sendAddress;
 
-#define NETGEAR
+#define HOME
 
 #ifdef NETGEAR
   #define WLAN_SSID       "NETGEAR84"        // cannot be longer than 32 characters!
@@ -48,7 +48,7 @@ const unsigned long
 
 uint32_t myIP;
 
-#define UDP_READ_BUFFER_SIZE 20
+#define UDP_READ_BUFFER_SIZE 50
 #define LISTEN_PORT_UDP 30003
 
 UDPServer udpServer = UDPServer(LISTEN_PORT_UDP);
@@ -92,8 +92,8 @@ void pause(){
 void stopLift(){
 }
 
-void doCommand(char* m, int command){
- switch(command){
+void doCommand(char* m, Parser::Header header){
+ switch(header.command){
    //Status
     case 3:
       digitalWrite(50, HIGH);
@@ -107,7 +107,7 @@ void doCommand(char* m, int command){
       delay(2500);
       sendStatusMessage(26);
       delay(2500);
-      writeNewRecord();
+      writeNewRecord(header.destIP);
       delay(2500);
       sendStatusMessage(21);
       digitalWrite(51, LOW); 
@@ -148,7 +148,7 @@ void readUDP(){
       Parser::Header header = p.ParseHeader(buffer);
       Serial.print("Command = ");Serial.println(header.command);
       Serial.println("Command Start");
-      doCommand(buffer, header.command);
+      doCommand(buffer, header);
       Serial.println("Command Done");
       
       p.resetPointer();
@@ -194,12 +194,12 @@ void sendStatusMessage(int ctrl){
    client.close();
 }
 
-void writeNewRecord() {  
+void writeNewRecord(int destIP) {  
   //Size depends on id
   uint8_t buf[25];
   
   byte sIP[4] = {myIP >> 24, myIP >> 16, myIP >> 8, myIP};
-  byte dIP[4] = {192, 168, 1, 255};
+  byte dIP[4] = {destIP >> 24, destIP >> 16, destIP >> 8, destIP};
   byte cutoff[6] = {111, 111, 111, 111, 111, 111};
   byte id[10] = {10, 20, 30, 40, 50, 60, 70, 80, 90, 100};
   
