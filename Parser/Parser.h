@@ -7,8 +7,8 @@ class Parser {
 	public:
 		struct Header
 		{
-			int sourceIP;
-			int destIP;
+			uint sourceIP;
+			uint destIP;
 			int command;
 			bool status;
 		};
@@ -19,7 +19,8 @@ class Parser {
 		};
 
 	   Parser();
-
+	   
+	   static void resetPointer();
 	   static Header ParseHeader(char* message);
 	   static TrackMessage ParseTrackMessage(char* message);
   

@@ -19,7 +19,7 @@ uint getIP(char* message)
 	return ret;
 }
 
-uint getCommand(char* message)
+int getCommand(char* message)
 {
 	return message[pointer++];
 }
@@ -36,14 +36,13 @@ bool setStatus(char* message)
 	return true;
 }
 
-void resetPointer()
+void Parser::resetPointer()
 {
 	pointer = 0;
 }
 
 Parser::Header Parser::ParseHeader(char* message)
 {
-	Serial.println("Parsing Header");
 	Header ret;
 	ret.sourceIP = getIP(message);
 	ret.destIP = getIP(message);
@@ -54,9 +53,7 @@ Parser::Header Parser::ParseHeader(char* message)
 
 Parser::TrackMessage Parser::ParseTrackMessage(char* message)
 {
-	Serial.println("Parsing Message");
 	TrackMessage ret;
 	ret.location = message[pointer++];
-	resetPointer();
 	return ret;
 }
