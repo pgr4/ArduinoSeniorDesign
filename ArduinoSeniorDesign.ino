@@ -17,7 +17,7 @@ Adafruit_CC3000 cc3000 = Adafruit_CC3000(ADAFRUIT_CC3000_CS, ADAFRUIT_CC3000_IRQ
 
 uint sendAddress;
 
-#define HOME
+#define NETGEAR
 
 #ifdef NETGEAR
   #define WLAN_SSID       "NETGEAR84"        // cannot be longer than 32 characters!
@@ -107,7 +107,7 @@ void doCommand(char* m, Parser::Header header){
       delay(2500);
       sendStatusMessage(26);
       delay(2500);
-      writeNewRecord(header.destIP);
+      writeNewRecord(header.sourceIP);
       delay(2500);
       sendStatusMessage(21);
       digitalWrite(51, LOW); 
@@ -194,14 +194,15 @@ void sendStatusMessage(int ctrl){
    client.close();
 }
 
-void writeNewRecord(int destIP) {  
+void writeNewRecord(uint destIP) {  
   //Size depends on id
-  uint8_t buf[25];
+  uint8_t buf[31];
   
   byte sIP[4] = {myIP >> 24, myIP >> 16, myIP >> 8, myIP};
   byte dIP[4] = {destIP >> 24, destIP >> 16, destIP >> 8, destIP};
   byte cutoff[6] = {111, 111, 111, 111, 111, 111};
-  byte id[10] = {10, 20, 30, 40, 50, 60, 70, 80, 90, 100};
+  byte ecutoff[6] = {111, 111, 111, 111, 111, 111};
+  byte id[10] = {10, 20, 30, 40, 2, 2, 70, 80, 90, 100};
   
   int pointer = 0;
   
@@ -227,7 +228,9 @@ void writeNewRecord(int destIP) {
       
       memcpy_P(&buf[pointer], id, sizeof(id));
       pointer += sizeof(id);
-           
+      
+      memcpy_P(&buf[pointer], ecutoff, sizeof(ecutoff));
+      
       client.write(buf, sizeof(buf));
   }
    client.close();
