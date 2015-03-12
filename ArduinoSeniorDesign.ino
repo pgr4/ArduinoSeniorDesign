@@ -4,6 +4,19 @@
 #include <ccspi.h>
 #include <SPI.h>
 #include <UDPServer.h>
+#include <Wire.h>
+#include <Adafruit_MotorShield.h>
+#include "utility/Adafruit_PWMServoDriver.h"
+
+// Create the motor shield object with the default I2C address
+Adafruit_MotorShield AFMS = Adafruit_MotorShield(); 
+// Or, create it with a different I2C address (say for stacking)
+// Adafruit_MotorShield AFMS = Adafruit_MotorShield(0x61); 
+
+// Select which 'port' M1, M2, M3 or M4. In this case, M1
+Adafruit_DCMotor *myMotor = AFMS.getMotor(4);
+// You can also make another motor on port M2
+//Adafruit_DCMotor *myOtherMotor = AFMS.getMotor(2);
 
 // These are the interrupt and control pins
 #define ADAFRUIT_CC3000_IRQ   3  // MUST be an interrupt pin!
@@ -57,22 +70,49 @@ Parser p = Parser();
 const int totPixels = 1536;
 int IntArray[totPixels];
 
-int d50 = 50;
-int d51 = 51;
-int d52 = 52;
+bool IsPowerOn = false;
 
 void setup(void){
   
-  pinMode(50,OUTPUT);
-  pinMode(51,OUTPUT);
-  digitalWrite(50, LOW); 
-  digitalWrite(51, LOW); 
-  
+  analogWriteResolution(12);
+    
   doSetup();
-  
-  Serial.println("Done with Setup");
     
   udpServer.begin();
+  
+  Serial.println("Adafruit Motorshield v2 - DC Motor test!");
+
+  AFMS.begin();  // create with the default frequency 1.6KHz
+  //AFMS.begin(1000);  // OR with a different frequency, say 1KHz
+  myMotor->setSpeed(50);  
+  Serial.println("Begin Loop");
+  uint8_t i;
+  
+  Serial.print("tick");
+  myMotor->run(FORWARD);
+  for (i=0; i<255; i++) {
+    myMotor->setSpeed(i);    
+    delay(10);
+  }
+  for (i=255; i!=0; i--) {
+    myMotor->setSpeed(i);  
+    delay(10);
+  }
+
+  Serial.println("tock");
+
+  myMotor->run(BACKWARD);
+  for (i=0; i<255; i++) {
+    myMotor->setSpeed(i);
+    delay(10);
+  }
+  for (i=255; i!=0; i--) {
+    myMotor->setSpeed(i);  
+    delay(10);
+  }
+
+  Serial.println("tech");
+  myMotor->run(RELEASE);
 }
 
 
@@ -96,21 +136,17 @@ void doCommand(char* m, Parser::Header header){
  switch(header.command){
    //Status
     case 3:
-      digitalWrite(50, HIGH);
       delay(2500);
       sendStatusMessage(21);
-      digitalWrite(50, LOW); 
       break;
     //Scan  
     case 4:
-      digitalWrite(51, HIGH);
       delay(2500);
       sendStatusMessage(26);
       delay(2500);
       writeNewRecord(header.sourceIP);
       delay(2500);
       sendStatusMessage(21);
-      digitalWrite(51, LOW); 
       break;
    //Go to Track
     case 10: 
@@ -127,6 +163,16 @@ void doCommand(char* m, Parser::Header header){
     //Pause
     case 13:
       stopLift();
+      break;
+    case 14:
+      break;
+    case 15:
+      break;
+    case 21:
+    
+
+  
+  delay(1000);
       break;
     default:
       break;
@@ -154,7 +200,7 @@ void readUDP(){
       p.resetPointer();
    }
    else{
-     //Serial.println("No Data Homes");
+     //Serial.println("No Data");
    }
 }
 
