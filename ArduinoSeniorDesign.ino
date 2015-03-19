@@ -30,6 +30,19 @@ Adafruit_CC3000 cc3000 = Adafruit_CC3000(ADAFRUIT_CC3000_CS, ADAFRUIT_CC3000_IRQ
 
 uint sendAddress;
 
+#define NEWALBUM        1
+#define POSITIONUPDATE  9
+
+#define ON              15
+#define OFF             16
+
+#define READY           21
+#define PLAY            22
+#define GOTOTRACK       23 
+#define PAUSE           24
+#define STOP            25
+#define SCAN            26
+
 #define NETGEAR
 
 #ifdef NETGEAR
@@ -117,7 +130,12 @@ void setup(void){
 
 
 void loop(void) {
+  
+  //Check for UDP Messages
   readUDP();
+  
+  //Check to see if we are at a new song
+  
 }
 
 void play(){
@@ -137,16 +155,16 @@ void doCommand(char* m, Parser::Header header){
    //Status
     case 3:
       delay(2500);
-      sendStatusMessage(21);
+      sendStatusMessage(READY);
       break;
     //Scan  
     case 4:
       delay(2500);
-      sendStatusMessage(26);
+      sendStatusMessage(SCAN);
       delay(2500);
       writeNewRecord(header.sourceIP);
       delay(2500);
-      sendStatusMessage(21);
+      sendStatusMessage(READY);
       break;
    //Go to Track
     case 10: 
@@ -247,7 +265,6 @@ void writeNewRecord(uint destIP) {
   byte sIP[4] = {myIP >> 24, myIP >> 16, myIP >> 8, myIP};
   byte dIP[4] = {destIP >> 24, destIP >> 16, destIP >> 8, destIP};
   byte cutoff[6] = {111, 111, 111, 111, 111, 111};
-  byte ecutoff[6] = {111, 111, 111, 111, 111, 111};
   byte id[10] = {10, 20, 30, 40, 2, 2, 70, 80, 90, 100};
   
   int pointer = 0;
@@ -266,7 +283,7 @@ void writeNewRecord(uint destIP) {
       memcpy_P(&buf[pointer], dIP, sizeof(dIP));
       pointer += sizeof(dIP);
       
-      buf[pointer] = 1;
+      buf[pointer] = NEWALBUM;
       pointer += 1;
       
       memcpy_P(&buf[pointer], cutoff, sizeof(cutoff));
@@ -275,7 +292,7 @@ void writeNewRecord(uint destIP) {
       memcpy_P(&buf[pointer], id, sizeof(id));
       pointer += sizeof(id);
       
-      memcpy_P(&buf[pointer], ecutoff, sizeof(ecutoff));
+      memcpy_P(&buf[pointer], cutoff, sizeof(cutoff));
       
       client.write(buf, sizeof(buf));
   }
