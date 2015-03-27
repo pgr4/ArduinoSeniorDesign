@@ -337,6 +337,19 @@ bool Adafruit_CC3000::begin(uint8_t patchReq, bool useSmartConfigData, const cha
     }
   }
     
+
+  unsigned long aucDHCP       = 14400;
+  unsigned long aucARP        = 3600;
+  unsigned long aucKeepalive  = 30;
+  unsigned long aucInactivity = 0;
+  cc3k_int_poll();
+
+  Serial.println("Going to Timeout");
+  if (netapp_timeout_values(&aucDHCP, &aucARP, &aucKeepalive, &aucInactivity) != 0) {
+    Serial.println("Error setting inactivity timeout!");
+    return false;
+  }
+
   return true;
 }
 
