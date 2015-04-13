@@ -1,8 +1,10 @@
+
 #include <Parser.h>
 #include <Adafruit_CC3000.h>
 #include <ccspi.h>
 #include <SPI.h>
 #include <UDPServer.h>
+
 
 // These are the interrupt and control pins
 #define ADAFRUIT_CC3000_IRQ   3  // MUST be an interrupt pin!
@@ -14,13 +16,17 @@
 Adafruit_CC3000 cc3000 = Adafruit_CC3000(ADAFRUIT_CC3000_CS, ADAFRUIT_CC3000_IRQ, ADAFRUIT_CC3000_VBAT,
                                          SPI_CLOCK_DIVIDER); // you can change this clock speed but DI
 
+
 uint sendAddress;
+
 
 #define NEWALBUM        1
 #define POSITIONUPDATE  9
 
+
 #define ON              15
 #define OFF             16
+
 
 #define READY           21
 #define PLAY            22
@@ -29,7 +35,9 @@ uint sendAddress;
 #define STOP            25
 #define SCAN            26
 
+
 #define NETGEAR
+
 
 #ifdef NETGEAR
   #define WLAN_SSID       "NETGEAR84"        // cannot be longer than 32 characters!
@@ -38,12 +46,14 @@ uint sendAddress;
   #define WLAN_SECURITY   WLAN_SEC_WPA2
 #endif
 
+
 #ifdef HOME
   #define WLAN_SSID       "ASUSPAT"        // cannot be longer than 32 characters!
   #define WLAN_PASS       "strongshrub"
 // Security can be WLAN_SEC_UNSEC, WLAN_SEC_WEP, WLAN_SEC_WPA or WLAN_SEC_WPA2
   #define WLAN_SECURITY   WLAN_SEC_WPA2
 #endif
+
 
 #ifdef SCHOOL
   #define WLAN_SSID       "UAGuest"        // cannot be longer than 32 characters!
@@ -52,24 +62,32 @@ uint sendAddress;
   #define WLAN_SECURITY   WLAN_SEC_UNSEC
 #endif
 
+
 Adafruit_CC3000_Client client;
+
 
 const unsigned long
   connectTimeout  = 15L * 1000L, // Max time to wait for server connection
   responseTimeout = 15L * 1000L; // Max time to wait for data from server
 
+
 uint32_t myIP;
+
 
 #define UDP_READ_BUFFER_SIZE 50
 #define LISTEN_PORT_UDP 30003
 
+
 UDPServer udpServer = UDPServer(LISTEN_PORT_UDP);
+
 
 Parser p = Parser();
 const int totPixels = 1536;
 int IntArray[totPixels];
 
+
 bool IsPowerOn = false;
+
 
 void setup(void){
   
@@ -81,103 +99,55 @@ void setup(void){
 }
 
 
+
 void loop(void) {
   
   //Check for UDP Messages
   readUDP();
-  
   //Check to see if we are at a new song
   
 }
 
+
+///////////////////////////////////////////////////
+//////////////////MEDIA COMMANDS///////////////////
+///////////////////////////////////////////////////
+
+
 void play(){
 }
+
 
 void goToTrack(Parser::TrackMessage m){ 
 }
 
+
+void goToBeginning(){
+}
+
+
 void pause(){
 }
 
-void stopLift(){
+
+//Scan the record
+//Write a newRecord message
+void scan(unit sourceIP){
 }
 
-void doCommand(char* m, Parser::Header header){
- switch(header.command){
-   //Status
-    case 3:
-      delay(2500);
-      sendStatusMessage(READY);
-      break;
-    //Scan  
-    case 4:
-      delay(2500);
-      sendStatusMessage(SCAN);
-      delay(2500);
-      writeNewRecord(header.sourceIP);
-      delay(2500);
-      sendStatusMessage(READY);
-      break;
-   //Go to Track
-    case 10: 
-      goToTrack(p.ParseTrackMessage(m));
-      break;
-    //Play
-    case 11:
-      play();
-      break;
-    //Lift
-    case 12:
-      pause();
-      break;
-    //Pause
-    case 13:
-      stopLift();
-      break;
-    case 14:
-      break;
-    case 15:
-      break;
-    case 21:
-    
 
-  
-  delay(1000);
-      break;
-    default:
-      break;
-  }
+//Set Power on or off
+//Send a Power message based on result
+void setPower(bool pwr){
+   IsPowerOn = pwr;
 }
 
-void readUDP(){
-  if (udpServer.available()) {
-      char buffer[UDP_READ_BUFFER_SIZE];
-      
-      int n = udpServer.readData(buffer, UDP_READ_BUFFER_SIZE);  // n contains # of bytes read into buffer
-      Serial.print("n: "); Serial.println(n);
-
-      for (int i = 0; i < n; ++i) {
-         uint8_t c = buffer[i];
-         Serial.print("c: "); Serial.println(c);
-      }
-      
-      Parser::Header header = p.ParseHeader(buffer);
-      Serial.print("Command = ");Serial.println(header.command);
-      Serial.println("Command Start");
-      doCommand(buffer, header);
-      Serial.println("Command Done");
-      
-      p.resetPointer();
-   }
-   else{
-     //Serial.println("No Data");
-   }
-}
 
 //When the microcontroller performs a task it needs to let the applications know we are busy
 //After the task is completed we let the apps know we are listening and ready
 void sendStatusMessage(int ctrl){
   uint8_t buf[15];
+
 
   byte sIP[4] = {myIP >> 24, myIP >> 16, myIP >> 8, myIP};
   byte dIP[4] = {192, 168, 1, 255};
@@ -188,6 +158,7 @@ void sendStatusMessage(int ctrl){
   do {
       client = cc3000.connectUDP(3232236031, 30003);
     } while(!client.connected());
+
 
     if(client.connected()) {
       
@@ -210,20 +181,64 @@ void sendStatusMessage(int ctrl){
    client.close();
 }
 
-void writeNewRecord(uint destIP) {  
-  //Size depends on id
-  uint8_t buf[31];
-  
+
+
+void sendPowerMessage(bool b){
+  uint8_t buf[15];
+
+
   byte sIP[4] = {myIP >> 24, myIP >> 16, myIP >> 8, myIP};
-  byte dIP[4] = {destIP >> 24, destIP >> 16, destIP >> 8, destIP};
+  byte dIP[4] = {192, 168, 1, 255};
   byte cutoff[6] = {111, 111, 111, 111, 111, 111};
-  byte id[10] = {10, 20, 30, 40, 2, 2, 70, 80, 90, 100};
   
   int pointer = 0;
   
   do {
       client = cc3000.connectUDP(3232236031, 30003);
     } while(!client.connected());
+
+
+    if(client.connected()) {
+      
+      memset(buf, 0, sizeof(buf));
+      
+      memcpy_P(buf, sIP, sizeof(sIP));
+      pointer += sizeof(sIP);
+      
+      memcpy_P(&buf[pointer], dIP, sizeof(dIP));
+      pointer += sizeof(dIP);
+      
+      if(IsPowerOn){
+         buf[pointer] = 15;
+      }
+      else{
+        buf[pointer] = 16;
+      }
+      
+      memcpy_P(&buf[pointer], cutoff, sizeof(cutoff));
+      pointer += sizeof(cutoff);
+      
+      client.write(buf, sizeof(buf));
+  }
+   client.close();
+}
+
+
+void sendNewRecord(uint destIP, int[] id) {  
+  //Size depends on id
+  uint8_t buf[21 + (sizeof(id)*2)];
+  
+  byte sIP[4] = {myIP >> 24, myIP >> 16, myIP >> 8, myIP};
+  byte dIP[4] = {destIP >> 24, destIP >> 16, destIP >> 8, destIP};
+  byte cutoff[6] = {111, 111, 111, 111, 111, 111};
+  //byte id[10] = {10, 20, 30, 40, 2, 2, 70, 80, 90, 100};
+  
+  int pointer = 0;
+  
+  do {
+      client = cc3000.connectUDP(3232236031, 30003);
+    } while(!client.connected());
+
 
     if(client.connected()) {
       
@@ -241,6 +256,11 @@ void writeNewRecord(uint destIP) {
       memcpy_P(&buf[pointer], cutoff, sizeof(cutoff));
       pointer += sizeof(cutoff);
       
+      for(int i = 0;i<sizeof(id);i++){
+        buf[pointer] = id[i] >> 8;
+        buf[pointer++] = id[i];
+      }
+      
       memcpy_P(&buf[pointer], id, sizeof(id));
       pointer += sizeof(id);
       
@@ -251,7 +271,102 @@ void writeNewRecord(uint destIP) {
    client.close();
 }
 
-//////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////
+////////////////////READING UDP////////////////////
+///////////////////////////////////////////////////
+
+
+void readUDP(){
+  if (udpServer.available()) {
+      char buffer[UDP_READ_BUFFER_SIZE];
+      
+      int n = udpServer.readData(buffer, UDP_READ_BUFFER_SIZE);  // n contains # of bytes read into buffer
+      Serial.print("n: "); Serial.println(n);
+
+
+      for (int i = 0; i < n; ++i) {
+         uint8_t c = buffer[i];
+         Serial.print("c: "); Serial.println(c);
+      }
+      
+      Parser::Header header = p.ParseHeader(buffer);
+      Serial.print("Command = ");Serial.println(header.command);
+      Serial.println("Command Start");
+      doCommand(buffer, header);
+      Serial.println("Command Done");
+      
+      p.resetPointer();
+   }
+   else{
+     //Serial.println("No Data");
+   }
+}
+
+
+void doCommand(char* m, Parser::Header header){
+ switch(header.command){
+   //Send a Message stating current status, which is free
+    case 3:
+      delay(2500);
+      sendStatusMessage(READY);
+      break;
+    //Scan  
+    case 4:
+      delay(2500);
+      sendStatusMessage(SCAN);
+      delay(2500);
+      scan(header.sourceIP);
+      delay(2500);
+      sendStatusMessage(READY);
+      break;
+    //Send a Message stating current power  
+    case 6:
+      delay(2500);
+      sendPowerMessage();  
+      break;
+    //Switch Power On
+    case 7:
+      delay(2500);
+      setPower(true);
+      delay(2500);
+      sendPowerMessage();
+      break;
+    //Switch Power Off
+    case 8:
+      delay(2500);
+      setPower(false);
+      delay(2500);
+      sendPowerMessage(IsPowerOn);
+      break;
+    //Go to Track
+    case 30: 
+    case 34
+      goToTrack(p.ParseTrackMessage(m));
+      break;
+    //Drop the ToneArm
+    case 31:
+      play();
+      break;
+    //Lift the Tone Arm
+    case 32:
+      pause();
+      break;
+    //Go To Beginning of Record
+    case 33:
+    case 35:
+      goToBeginning();
+      break;
+    default:
+      break;
+  }
+}
+
+
+///////////////////////////////////////////////////
+/////////////////SETUP FUNCTIONS///////////////////
+///////////////////////////////////////////////////
+
 
 void displayDriverMode(void)
 {
@@ -266,6 +381,7 @@ void displayDriverMode(void)
     Serial.println(F(" bytes"));
   #endif
 }
+
 
 uint16_t checkFirmwareVersion(void)
 {
@@ -288,6 +404,7 @@ uint16_t checkFirmwareVersion(void)
   return version;
 }
 
+
 void displayMACAddress(void)
 {
   uint8_t macAddress[6];
@@ -302,6 +419,7 @@ void displayMACAddress(void)
     cc3000.printHex((byte*)&macAddress, 6);
   }
 }
+
 
 bool displayConnectionDetails(void)
 {
@@ -325,11 +443,11 @@ bool displayConnectionDetails(void)
   }
 }
 
-//////////////////////////////////////////////////////////
 
 void doSetup(){
-Serial.begin(115200);
+  Serial.begin(115200);
   Serial.println(F("Hello, CC3000!\n")); 
+
 
   displayDriverMode();
   
@@ -338,6 +456,7 @@ Serial.begin(115200);
     Serial.println(F("Unable to initialise the CC3000! Check your wiring?"));
     for(;;);
   }
+
 
   uint16_t firmware = checkFirmwareVersion();
   if (firmware < 0x113) {
@@ -352,6 +471,7 @@ Serial.begin(115200);
     Serial.println(F("Failed!"));
     while(1);
   }
+
 
   /* Attempt to connect to an access point */
   char *ssid = WLAN_SSID;             /* Max 32 chars */
@@ -370,6 +490,7 @@ Serial.begin(115200);
   while (!cc3000.checkDHCP()) {
     delay(100); // ToDo: Insert a DHCP timeout!
   }
+
 
   /* Display the IP address DNS, Gateway, etc. */  
   while (!displayConnectionDetails()) {
