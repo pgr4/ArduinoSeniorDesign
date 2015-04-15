@@ -1,11 +1,10 @@
-
 #include <Parser.h>
 #include <Adafruit_CC3000.h>
 #include <ccspi.h>
 #include <SPI.h>
 #include <UDPServer.h>
-
-
+//void* operator new(size_t size) { return malloc(size); }
+//void operator delete(void* ptr) { free(ptr); }
 // These are the interrupt and control pins
 #define ADAFRUIT_CC3000_IRQ   3  // MUST be an interrupt pin!
 // These can be any two pins
@@ -16,17 +15,13 @@
 Adafruit_CC3000 cc3000 = Adafruit_CC3000(ADAFRUIT_CC3000_CS, ADAFRUIT_CC3000_IRQ, ADAFRUIT_CC3000_VBAT,
                                          SPI_CLOCK_DIVIDER); // you can change this clock speed but DI
 
-
 uint sendAddress;
-
 
 #define NEWALBUM        1
 #define POSITIONUPDATE  9
 
-
 #define ON              15
 #define OFF             16
-
 
 #define READY           21
 #define PLAY            22
@@ -35,9 +30,7 @@ uint sendAddress;
 #define STOP            25
 #define SCAN            26
 
-
 #define NETGEAR
-
 
 #ifdef NETGEAR
   #define WLAN_SSID       "NETGEAR84"        // cannot be longer than 32 characters!
@@ -46,14 +39,12 @@ uint sendAddress;
   #define WLAN_SECURITY   WLAN_SEC_WPA2
 #endif
 
-
 #ifdef HOME
   #define WLAN_SSID       "ASUSPAT"        // cannot be longer than 32 characters!
   #define WLAN_PASS       "strongshrub"
 // Security can be WLAN_SEC_UNSEC, WLAN_SEC_WEP, WLAN_SEC_WPA or WLAN_SEC_WPA2
   #define WLAN_SECURITY   WLAN_SEC_WPA2
 #endif
-
 
 #ifdef SCHOOL
   #define WLAN_SSID       "UAGuest"        // cannot be longer than 32 characters!
@@ -62,34 +53,43 @@ uint sendAddress;
   #define WLAN_SECURITY   WLAN_SEC_UNSEC
 #endif
 
-
 Adafruit_CC3000_Client client;
-
 
 const unsigned long
   connectTimeout  = 15L * 1000L, // Max time to wait for server connection
   responseTimeout = 15L * 1000L; // Max time to wait for data from server
 
-
 uint32_t myIP;
-
 
 #define UDP_READ_BUFFER_SIZE 50
 #define LISTEN_PORT_UDP 30003
 
-
 UDPServer udpServer = UDPServer(LISTEN_PORT_UDP);
 
-
 Parser p = Parser();
-const int totPixels = 1536;
-int IntArray[totPixels];
-
 
 bool IsPowerOn = false;
 
+const int totPixels = 1536;
+int IntArray[totPixels];
+int voltPerUnit = .0049;
+
+short si_1 = 13;
+short CLKpin = 3;
+short AOpin1 = A1;
+
+const int Threshold = 1000;
+const int ThresholdCount = 5;
+
+const int keySize = 20;
+byte keyK[keySize];
 
 void setup(void){
+  Serial.begin(115200);
+  
+  ClearKey();
+  //int x = {1,1,2,2,1020,1020,1020,1020,2,3,1020,1020,5,1020};
+  //CreateKey(x);
   
   analogWriteResolution(12);
     
@@ -130,9 +130,145 @@ void pause(){
 }
 
 
+///////////////////////////////////////////////////
+//////////////////SCAN FUNCTIONS///////////////////
+///////////////////////////////////////////////////
+
+void ClearKey(){
+  for(int i = 0;i<keySize;i++){
+    keyK[i] = 0;
+  }
+}
+
+//Doesn't need a parameter simply use the diode array
+byte* CreateKey(uint sourceIP, int* x){
+  int iter = 0;
+    int partialValue = 0;
+    int partialCount = 0;
+  for(int i = 0; i<totPixels;i++){
+    if(x[i] > 1000){
+      partialValue += i;
+      partialCount += 1;
+    }
+    else{
+      //NOTE:This ignores end cases
+      if(partialCount > 0){
+        int totalValue = partialValue/partialCount;
+        byte sByte = totalValue;
+        byte fByte = totalValue>>8;
+        keyK[iter++] = fByte;
+        keyK[iter++] = sByte;
+      }
+      partialCount =0;
+      partialValue = 0;
+    }
+  }
+  
+  //Serial.println("Printing Key");
+  //for(int i= 0;i<10;i++){
+    //Serial.println(keyK[i]);
+  //}
+  
+  delay(1000);
+  sendNewRecord(sourceIP);
+  delay(1000);
+}
+
+void ClockPulse()
+{
+  delayMicroseconds(1);
+  digitalWrite(CLKpin, HIGH);
+  digitalWrite(CLKpin, LOW);
+}
+
+void sendPulse(int pin)
+{
+  digitalWrite(pin, HIGH);
+  delayMicroseconds(12);
+  digitalWrite(pin, LOW);
+}
+
+void PrintData()
+{
+  for(int i = 0; i < totPixels; i++)
+  {
+      int test = IntArray[i];
+      Serial.println(test);
+  } 
+}
+
+void initializeScan(){
+  pinMode(si_1, OUTPUT);
+  pinMode(CLKpin, OUTPUT);
+  pinMode(AOpin1, INPUT);
+
+  //set all of the digital pins low
+  for( int i = 0; i < 14; i++ )
+  {
+      digitalWrite(i, LOW);  
+  }
+  
+  // Clock out any existing SI pulse through the ccd register:
+  for(int i = 0; i< totPixels; i++)
+  {
+      ClockPulse(); 
+  }
+
+  // Create a new SI pulse and clock out that same SI pulse through the sensor register:
+  digitalWrite(si_1, HIGH);
+  ClockPulse(); 
+  digitalWrite(si_1, LOW);
+  
+  for(int i = 0; i < totPixels; i++)
+  {
+      ClockPulse(); 
+  }
+}
+
 //Scan the record
 //Write a newRecord message
-void scan(unit sourceIP){
+void scan(uint sourceIP){
+  
+  ClearKey();
+  int x[14] = {1,1,2,2,1020,1020,1020,1020,2,3,1020,1020,5,1020};
+  CreateKey(sourceIP, x);
+  
+  digitalWrite(si_1, HIGH);
+  ClockPulse();
+  digitalWrite(si_1, LOW);
+  
+  for(int i=0; i < totPixels; i++)
+  {
+      //delayMicroseconds(20);// <-- We add a delay to stabilize the AO output from the sensor
+      if(i < totPixels)
+      {
+        IntArray[i] = analogRead(AOpin1);
+      }
+      
+      ClockPulse(); 
+  }
+
+  digitalWrite(si_1, HIGH);
+  ClockPulse(); 
+  digitalWrite(si_1, LOW);
+
+  for(int i = 0; i < totPixels; i++)
+  {
+      //Create Key
+      //Serial.println(IntArray[i]);
+  }
+  
+  //Serial.println("**************Done**************");
+
+  for(int i = 0; i < totPixels; i++)
+  {
+      if(i==18)
+      {
+        
+      }
+  }    
+  
+  delay(1);// <-- Add 15 ms integration time
 }
 
 
@@ -147,7 +283,6 @@ void setPower(bool pwr){
 //After the task is completed we let the apps know we are listening and ready
 void sendStatusMessage(int ctrl){
   uint8_t buf[15];
-
 
   byte sIP[4] = {myIP >> 24, myIP >> 16, myIP >> 8, myIP};
   byte dIP[4] = {192, 168, 1, 255};
@@ -186,7 +321,6 @@ void sendStatusMessage(int ctrl){
 void sendPowerMessage(bool b){
   uint8_t buf[15];
 
-
   byte sIP[4] = {myIP >> 24, myIP >> 16, myIP >> 8, myIP};
   byte dIP[4] = {192, 168, 1, 255};
   byte cutoff[6] = {111, 111, 111, 111, 111, 111};
@@ -224,14 +358,21 @@ void sendPowerMessage(bool b){
 }
 
 
-void sendNewRecord(uint destIP, int[] id) {  
+void sendNewRecord(uint destIP) {  
   //Size depends on id
-  uint8_t buf[21 + (sizeof(id)*2)];
+  int realKeySize=keySize;
+  for(int i =0; i<keySize;i+=2){
+    if(keyK[i] ==0 && keyK[i+1] == 0)
+    {
+      realKeySize = i;
+    }
+  }
+  
+  uint8_t buf[21 + realKeySize];
   
   byte sIP[4] = {myIP >> 24, myIP >> 16, myIP >> 8, myIP};
   byte dIP[4] = {destIP >> 24, destIP >> 16, destIP >> 8, destIP};
   byte cutoff[6] = {111, 111, 111, 111, 111, 111};
-  //byte id[10] = {10, 20, 30, 40, 2, 2, 70, 80, 90, 100};
   
   int pointer = 0;
   
@@ -256,13 +397,10 @@ void sendNewRecord(uint destIP, int[] id) {
       memcpy_P(&buf[pointer], cutoff, sizeof(cutoff));
       pointer += sizeof(cutoff);
       
-      for(int i = 0;i<sizeof(id);i++){
-        buf[pointer] = id[i] >> 8;
-        buf[pointer++] = id[i];
+      for(int i = 0;i<sizeof(realKeySize);i+=2){
+        buf[pointer++] = keyK[i];
+        buf[pointer++] = keyK[i+1];
       }
-      
-      memcpy_P(&buf[pointer], id, sizeof(id));
-      pointer += sizeof(id);
       
       memcpy_P(&buf[pointer], cutoff, sizeof(cutoff));
       
@@ -276,6 +414,63 @@ void sendNewRecord(uint destIP, int[] id) {
 ////////////////////READING UDP////////////////////
 ///////////////////////////////////////////////////
 
+void doCommand(char* m, Parser::Header header){
+ switch(header.command){
+   //Send a Message stating current status, which is free
+    case 3:
+      delay(2500);
+      sendStatusMessage(READY);
+      break;
+    //Scan  
+    case 4:
+      delay(2500);
+      sendStatusMessage(SCAN);
+      delay(2500);
+      scan(header.sourceIP);
+      delay(2500);
+      sendStatusMessage(READY);
+      break;
+    //Send a Message stating current power  
+    case 6:
+      delay(2500);
+      sendPowerMessage(IsPowerOn);  
+      break;
+    //Switch Power On
+    case 7:
+      delay(2500);
+      setPower(true);
+      delay(2500);
+      sendPowerMessage(IsPowerOn);
+      break;
+    //Switch Power Off
+    case 8:
+      delay(2500);
+      setPower(false);
+      delay(2500);
+      sendPowerMessage(IsPowerOn);
+      break;
+    //Go to Track
+    case 30: 
+    case 34:
+      goToTrack(p.ParseTrackMessage(m));
+      break;
+    //Drop the ToneArm 
+    case 31:
+      play();
+      break;
+    //Lift the Tone Arm
+    case 32:
+      pause();
+      break;
+    //Go To Beginning of Record
+    case 33:
+    case 35:
+      goToBeginning();
+      break;
+    default:
+      break;
+  }
+}
 
 void readUDP(){
   if (udpServer.available()) {
@@ -302,66 +497,6 @@ void readUDP(){
      //Serial.println("No Data");
    }
 }
-
-
-void doCommand(char* m, Parser::Header header){
- switch(header.command){
-   //Send a Message stating current status, which is free
-    case 3:
-      delay(2500);
-      sendStatusMessage(READY);
-      break;
-    //Scan  
-    case 4:
-      delay(2500);
-      sendStatusMessage(SCAN);
-      delay(2500);
-      scan(header.sourceIP);
-      delay(2500);
-      sendStatusMessage(READY);
-      break;
-    //Send a Message stating current power  
-    case 6:
-      delay(2500);
-      sendPowerMessage();  
-      break;
-    //Switch Power On
-    case 7:
-      delay(2500);
-      setPower(true);
-      delay(2500);
-      sendPowerMessage();
-      break;
-    //Switch Power Off
-    case 8:
-      delay(2500);
-      setPower(false);
-      delay(2500);
-      sendPowerMessage(IsPowerOn);
-      break;
-    //Go to Track
-    case 30: 
-    case 34
-      goToTrack(p.ParseTrackMessage(m));
-      break;
-    //Drop the ToneArm
-    case 31:
-      play();
-      break;
-    //Lift the Tone Arm
-    case 32:
-      pause();
-      break;
-    //Go To Beginning of Record
-    case 33:
-    case 35:
-      goToBeginning();
-      break;
-    default:
-      break;
-  }
-}
-
 
 ///////////////////////////////////////////////////
 /////////////////SETUP FUNCTIONS///////////////////
@@ -445,7 +580,6 @@ bool displayConnectionDetails(void)
 
 
 void doSetup(){
-  Serial.begin(115200);
   Serial.println(F("Hello, CC3000!\n")); 
 
 
