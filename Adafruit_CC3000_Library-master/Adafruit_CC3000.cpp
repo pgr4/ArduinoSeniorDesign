@@ -344,9 +344,7 @@ bool Adafruit_CC3000::begin(uint8_t patchReq, bool useSmartConfigData, const cha
   unsigned long aucInactivity = 0;
   cc3k_int_poll();
 
-  Serial.println("Going to Timeout");
   if (netapp_timeout_values(&aucDHCP, &aucARP, &aucKeepalive, &aucInactivity) != 0) {
-    Serial.println("Error setting inactivity timeout!");
     return false;
   }
 
@@ -660,19 +658,14 @@ bool Adafruit_CC3000::setDHCP()
 /**************************************************************************/
 bool Adafruit_CC3000::getIPAddress(uint32_t *retip, uint32_t *netmask, uint32_t *gateway, uint32_t *dhcpserv, uint32_t *dnsserv)
 {
-  Serial.println("_initialised");
   if (!_initialised) return false;
-  Serial.println("IsConnected");
   if (!cc3000Bitset.test(CC3000BitSet::IsConnected)) return false;
-  Serial.println("HasDHCP");
   if (!cc3000Bitset.test(CC3000BitSet::HasDHCP)) return false;
 
   tNetappIpconfigRetArgs ipconfig;
   netapp_ipconfig(&ipconfig);
-  Serial.println("ipconfig");
   /* If byte 1 is 0 we don't have a valid address */
   if (ipconfig.aucIP[3] == 0) return false;
-  Serial.println("Connected");
   memcpy(retip, ipconfig.aucIP, 4);
   memcpy(netmask, ipconfig.aucSubnetMask, 4);
   memcpy(gateway, ipconfig.aucDefaultGateway, 4);
@@ -1651,10 +1644,8 @@ int Adafruit_CC3000_Client::read(void)
 }
 
 int Adafruit_CC3000_Client::available(void) {
-  Serial.println("1");
   // not open!
   if (_socket < 0) return 0;
-Serial.println("2");
   if ((bufsiz > 0) // we have some data in the internal buffer
       && (_rx_buf_idx < bufsiz)) {  // we havent already spit it all out
     return (bufsiz - _rx_buf_idx);
@@ -1674,11 +1665,9 @@ Serial.println("2");
   //if (CC3KPrinter != 0) } CC3KPrinter->print(F("Select: ")); CC3KPrinter->println(s); }
   if (s == 1) 
   {
-    Serial.println("3");
     return 1;  // some data is available to read
   }
   else {
-    Serial.println("4");
     return 0;  // no data is available
   }
 }

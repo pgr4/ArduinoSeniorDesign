@@ -28,7 +28,7 @@ bool setStatus(char* message)
 {
 	for(int i = 0; i< 6;i++)
 	{
-		if(message[pointer + i] != 111)
+		if(message[pointer++] != 111)
 		{
 			return false;
 		}
@@ -54,6 +54,7 @@ Parser::Header Parser::ParseHeader(char* message)
 Parser::TrackMessage Parser::ParseTrackMessage(char* message)
 {
 	TrackMessage ret;
-	ret.location = message[pointer++];
+	ret.fByte = message[pointer++];
+	ret.sByte = message[pointer++];
 	return ret;
 }

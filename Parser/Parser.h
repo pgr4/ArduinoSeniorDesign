@@ -15,7 +15,8 @@ class Parser {
 
 		struct TrackMessage
 		{
-			int location;
+			byte fByte;
+			byte sByte;
 		};
 
 	   Parser();
